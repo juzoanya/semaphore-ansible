@@ -1,1 +1,58 @@
+---
+- name: Sample Playbook for Testing
+  hosts: all
+  become: yes
 
+  vars:
+    user_name: testuser
+    user_password: "{{ 'password' | password_hash('sha512') }}"
+    packages:
+      - git
+      - vim
+      - curl
+
+  tasks:
+    - name: Ensure required packages are installed
+      apt:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+
+    - name: Create a new user
+      user:
+        name: "{{ user_name }}"
+        password: "{{ user_password }}"
+        state: present
+
+    - name: Create a test directory
+      file:
+        path: "/home/{{ user_name }}/testdir"
+        state: directory
+        owner: "{{ user_name }}"
+        group: "{{ user_name }}"
+        mode: '0755'
+
+    - name: Deploy a sample file
+      copy:
+        dest: "/home/{{ user_name }}/testdir/sample.txt"
+        content: |
+          Welcome to the Ansible test playbook!
+          This is a sample file deployed by Ansible.
+        owner: "{{ user_name }}"
+        group: "{{ user_name }}"
+        mode: '0644'
+
+    - name: Ensure the SSH service is running
+      service:
+        name: ssh
+        state: started
+
+    - name: Test connectivity to an external site
+      uri:
+        url: https://www.google.com
+        return_content: yes
+      register: test_response
+
+    - name: Display test connectivity result
+      debug:
+        msg: "Connectivity Test Response: {{ test_response.content[:100] }}"
