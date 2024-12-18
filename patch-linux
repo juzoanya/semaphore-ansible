@@ -1,0 +1,37 @@
+---
+- name: Patch Debian, CentOS, and Ubuntu machines
+  hosts: all
+  become: true
+  tasks:
+    - name: Identify the OS family
+      ansible.builtin.setup:
+        filter: ansible_os_family
+
+    - name: Patch Debian/Ubuntu machines
+      ansible.builtin.package:
+        name: '*'
+        state: latest
+        update_cache: true
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Patch CentOS/Red Hat machines
+      ansible.builtin.yum:
+        name: '*'
+        state: latest
+      when: ansible_facts['os_family'] == 'RedHat'
+
+    - name: Reboot the server if needed (Debian/Ubuntu)
+      ansible.builtin.shell: |
+        if [ -f /var/run/reboot-required ]; then
+          /sbin/shutdown -r now
+        fi
+      args:
+        executable: /bin/bash
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Reboot the server if needed (CentOS/Red Hat)
+      ansible.builtin.shell: |
+        needs-restarting -r || true
+      args:
+        executable: /bin/bash
+      when: ansible_facts['os_family'] == 'RedHat'
